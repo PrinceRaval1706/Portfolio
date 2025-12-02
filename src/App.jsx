@@ -8,6 +8,7 @@ import heroImg from './assets/MY PHOTO.png';
 import crazeonImg from './assets/crazeonsystem.png';
 import traveling from './assets/travel.png';
 import music from './assets/music.png';
+import emailjs from "@emailjs/browser";
 export default function App() {
   return (
     <div>
@@ -206,165 +207,43 @@ function Projects() {
 }
 function Contact() {
   const myEmail = "ravalprince1706@gmail.com";
-  const [formData, setFormData] = React.useState({ name: "", email: "", message: "" });
-  const [status, setStatus] = React.useState(null); // success | error | null
-  const [method, setMethod] = React.useState("mailto"); // "mailto" | "formspree" | "emailjs"
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const contactRef = React.useRef();
+  const formRef = React.useRef();
 
-  const openMailClient = (subject, body, to = myEmail, cc) => {
-    const params = new URLSearchParams();
-    if (cc) params.append("cc", cc);
-    if (subject) params.append("subject", subject);
-    if (body) params.append("body", body);
-    const query = params.toString();
-    const mailto = `mailto:${encodeURIComponent(to)}${query ? `?${query}` : ""}`;
-    window.location.href = mailto;
-  };
-
-  const sendViaFormspree = async (subject, body) => {
-    // Replace the URL with your Formspree endpoint: https://formspree.io/f/{yourId}
-    const FORMSPREE_URL = "https://formspree.io/f/yourFormId";
-    try {
-      const payload = {
-        name: formData.name,
-        email: formData.email || "no-reply",
-        subject,
-        message: formData.message,
-      };
-      const res = await fetch(FORMSPREE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        setStatus({ type: "success", msg: "Message sent via Formspree. Thank you!" });
-        setFormData({ name: "", email: "", message: "" });
-      } else {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Formspree error");
-      }
-    } catch (err) {
-      setStatus({ type: "error", msg: "Formspree send failed: " + err.message });
-    }
-  };
-
-  const sendViaEmailJS = async (subject, body) => {
-    // Replace these with your EmailJS service/template/user IDs (or Public Key)
-    const SERVICE_ID = "your_service_id";
-    const TEMPLATE_ID = "your_template_id";
-    const USER_ID = "your_user_or_public_key";
-    const endpoint = "https://api.emailjs.com/api/v1.0/email/send";
-    try {
-      const payload = {
-        service_id: SERVICE_ID,
-        template_id: TEMPLATE_ID,
-        user_id: USER_ID,
-        template_params: {
-          from_name: formData.name,
-          from_email: formData.email || "no-reply",
-          to_email: myEmail,
-          subject,
-          message: formData.message,
-        },
-      };
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        setStatus({ type: "success", msg: "Message sent via EmailJS. Check your inbox." });
-        setFormData({ name: "", email: "", message: "" });
-      } else {
-        const data = await res.text();
-        throw new Error(data || "EmailJS error");
-      }
-    } catch (err) {
-      setStatus({ type: "error", msg: "EmailJS send failed: " + err.message });
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  const sendEmail = (e) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.message.trim()) {
-      setStatus({ type: "error", msg: "Please provide your name and a message." });
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
-      setStatus({ type: "error", msg: "Please enter a valid reply email or leave it blank." });
-      return;
-    }
 
-    const subject = `Portfolio Contact from ${formData.name}`;
-    const body = `From: ${formData.email || "no-reply"}\n\nMessage:\n${formData.message}`;
+    // 1️⃣ Email goes to YOU (Contact Us template)
+    emailjs.sendForm(
+      "service_j0mefhm",    
+      "template_vp2dz0o",              
+      formRef.current,
+      "LFNJZO6Eru7jAeIna"   
+    );
 
-    if (method === "mailto") {
-      if (window.confirm("Open your mail client to send this message?")) {
-        try {
-          openMailClient(subject, body, myEmail, formData.email || "");
-          setStatus({ type: "success", msg: "Mail client opened. If it didn't open, use the copy button below." });
-          setFormData({ name: "", email: "", message: "" });
-        } catch (err) {
-          setStatus({ type: "error", msg: "Unable to open mail client. Use copy or download vCard." });
-        }
-      }
-      return;
-    }
+    // 2️⃣ Auto reply to USER (Auto Reply template)
+    emailjs.sendForm(
+      "service_j0mefhm",      
+      "template_jn8t8oh",     
+      formRef.current,
+      "LFNJZO6Eru7jAeIna"
+    );
 
-    // For serverless options attempt to send directly
-    setStatus({ type: null, msg: "Sending..." });
-    if (method === "formspree") {
-      await sendViaFormspree(subject, body);
-    } else if (method === "emailjs") {
-      await sendViaEmailJS(subject, body);
-    }
-  };
-
-  const copyEmail = async () => {
-    try {
-      await navigator.clipboard.writeText(myEmail);
-      setStatus({ type: "success", msg: "Email copied to clipboard." });
-    } catch {
-      setStatus({ type: "error", msg: "Copy failed. Please copy manually: " + myEmail });
-    }
-  };
-
-  const downloadVCard = () => {
-    const vcard = [
-      "BEGIN:VCARD",
-      "VERSION:3.0",
-      "FN:Prince Raval",
-      `EMAIL;TYPE=INTERNET;TYPE=WORK:${myEmail}`,
-      "TITLE:Full-stack Developer",
-      "END:VCARD",
-    ].join("\n");
-    const blob = new Blob([vcard], { type: "text/vcard" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "Prince_Raval.vcf";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    setStatus({ type: "success", msg: "vCard downloaded." });
-  };
-
-  // color tokens
-  const colors = {
-    sectionText: "#e8f1ff",
-    paragraph: "rgba(232,241,255,0.85)",
-    primary: "#0d6efd", // blue
-    accent: "#0d9488", // teal
-    success: "#198754",
-    secondary: "#6c757d",
-    mutedBtnText: "#ffffff",
+    alert("Message Sent Successfully!");
+    formRef.current.reset();
   };
 
   return (
-    <section id="contact" className="py-5" style={{ background: "linear-gradient(180deg,#0f1724 0%, #0b1220 100%)", color: colors.sectionText }}>
+    <section
+      id="contact"
+      ref={contactRef}
+      className="py-5"
+      style={{
+        background: "linear-gradient(180deg,#0f1724 0%, #0b1220 100%)",
+        color: "#e8f1ff",
+      }}
+    >
       <div className="container">
         <div
           className="mx-auto"
@@ -372,58 +251,67 @@ function Contact() {
             maxWidth: 900,
             borderRadius: 12,
             padding: 24,
-            background: "linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
+            background:
+              "linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
             boxShadow: "0 8px 30px rgba(2,6,23,0.6)",
             backdropFilter: "blur(6px)",
             border: "1px solid rgba(255,255,255,0.04)",
           }}
         >
-          <div className=" flex-md-row align-items-center gap-4">
-          
+          <form
+            ref={formRef}
+            onSubmit={sendEmail}
+            className="space-y-3 flex flex-col"
+          >
+            <input
+              type="text"
+              name="name"       // ✔ MUST MATCH TEMPLATE
+              placeholder="Name"
+              required
+              className="bg-slate-950 border-slate-700 rounded-xl px-3 py-2 
+              text-sm sm:text-base focus:ring-2 focus:ring-blue-500"
+            />
 
-              <form className="space-y-3 flex flex-col">
+            <input
+              type="email"
+              name="email"      // ✔ MUST MATCH TEMPLATE
+              placeholder="Email"
+              required
+              className="bg-slate-950 border-slate-700 rounded-xl px-3 py-2 
+              text-sm sm:text-base focus:ring-2 focus:ring-blue-500"
+            />
 
-                <input
-                  type="text"
-                  name="user_name"
-                  placeholder="Name"
-                  required
-                  className=" bg-slate-950 border-slate-700 rounded-xl px-3 py-2 text-sm sm:text-base focus:ring-2 focus:ring-blue-500"
-                />
+            <textarea
+              name="message"    // ✔ MUST MATCH TEMPLATE
+              rows="4"
+              placeholder="Message..."
+              required
+              className="bg-slate-950 border-slate-700 rounded-xl px-3 py-2 
+              text-sm sm:text-base resize-none focus:ring-2 focus:ring-blue-500"
+            ></textarea>
 
-                <input
-                  type="email"
-                  name="user_email"
-                  placeholder="Email"
-                  required
-                  className="bg-slate-950 border-slate-700 rounded-xl px-3 py-2 text-sm sm:text-base focus:ring-2 focus:ring-blue-500"
-                />
-
-                <textarea
-                  name="message"
-                  rows="4"
-                  placeholder="Message..."
-                  required
-                  className="bg-slate-950 border-slate-700 rounded-xl px-3 py-2 text-sm sm:text-base resize-none focus:ring-2 focus:ring-blue-500"
-                ></textarea>
-
-                <button
-                  type="submit"
-                  className="w-full bg-blue-600 py-2 rounded-xl font-medium hover:bg-blue-500 active:scale-95 transition"
-                >
-                  Send Message
-                </button>
-              </form>
-          </div>
+            <button
+              type="submit"
+              className="w-full bg-blue-600 py-2 rounded-xl font-medium 
+              hover:bg-blue-500 active:scale-95 transition"
+            >
+              Send Message
+            </button>
+          </form>
         </div>
 
-        <div className="text-center mt-3" style={{ color: "rgba(232,241,255,0.72)" }}>
-          You can also reach me at <strong style={{ color: "#fff" }}>{myEmail}</strong>.
+        <div
+          className="text-center mt-3"
+          style={{ color: "rgba(232,241,255,0.72)" }}
+        >
+          You can also reach me at{" "}
+          <strong style={{ color: "#fff" }}>{myEmail}</strong>.
         </div>
       </div>
     </section>
   );
 }
+
 
 function Footer() {
   return (
